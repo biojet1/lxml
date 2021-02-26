@@ -1535,7 +1535,12 @@ cdef bytes _utf8(object s):
         utf8_string = bytes(s)
         valid = _is_valid_xml_ascii(utf8_string)
     else:
-        raise TypeError("Argument must be bytes or unicode, got '%.200s'" % type(s).__name__)
+        if python.IS_PYTHON2:
+            utf8_string = str(s)
+        else:
+            utf8_string = utf8_string = (<unicode>s).encode('utf8')            
+        valid = _is_valid_xml_ascii(utf8_string)            
+#         raise TypeError("Argument must be bytes or unicode, got '%.200s'" % type(s).__name__)
     if not valid:
         raise ValueError(
             "All strings must be XML compatible: Unicode or ASCII, no NULL bytes or control characters")
