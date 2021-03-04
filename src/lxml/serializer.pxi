@@ -1491,11 +1491,11 @@ cdef class _IncrementalFileWriter:
             for name, value in _iter_attrib(attrib):
                 if name not in _extra:
                     ns, name = _getNsTag(name)
-                    attributes.append((ns, name, _utf8(value)))
+                    attributes.append((ns, name, _utf8x(value)))
         if _extra:
             for name, value in _extra.iteritems():
                 ns, name = _getNsTag(name)
-                attributes.append((ns, name, _utf8(value)))
+                attributes.append((ns, name, _utf8x(value)))
         reversed_nsmap = {}
         if nsmap:
             for prefix, ns in nsmap.items():
@@ -1868,3 +1868,32 @@ cdef class _MethodChanger:
     async def __aexit__(self, *args):
         # for your async convenience
         return self.__exit__(*args)
+
+cdef bytes _utf8x(object s):
+    """Test if a string is valid user input and encode it to UTF-8.
+    Reject all bytes/unicode input that contains non-XML characters.
+    Reject all bytes input that contains non-ASCII characters.
+    """
+    cdef int valid
+    cdef bytes utf8_string
+    if python.IS_PYTHON2 and type(s) is bytes:
+        utf8_string = <bytes>s
+        valid = _is_valid_xml_ascii(utf8_string)
+    elif isinstance(s, unicode):
+        utf8_string = (<unicode>s).encode('utf8')
+        valid = _is_valid_xml_utf8(utf8_string)
+    elif isinstance(s, (bytes, bytearray)):
+        utf8_string = bytes(s)
+        valid = _is_valid_xml_ascii(utf8_string)
+    else:
+        if s is None:
+            raise TypeError("Argument must be bytes or unicode, got '%.200s'" % type(s).__name__)
+        elif python.IS_PYTHON2:
+            utf8_string = str(s)
+        else:
+            utf8_string = str(s).encode('utf8')            
+        valid = _is_valid_xml_ascii(utf8_string)            
+    if not valid:
+        raise ValueError(
+            "All strings must be XML compatible: Unicode or ASCII, no NULL bytes or control characters")
+    return utf8_string
